@@ -1,13 +1,29 @@
 const { Telegraf, Markup } = require('telegraf');
 const axios = require('axios');
+const express = require('express');
 
-// 🔒 TOKEN DAN API KEY (TIDAK DIUBAH SAMA SEKALI)
+// ==========================================
+// 🌐 SETUP WEB SERVER (BIAR NYALA 24/7 DI CLOUD RENDER)
+// ==========================================
+const app = express();
+const port = process.env.PORT || 3000;
+
+app.get('/', (req, res) => {
+  res.send('✅ Bot Lacak Resi Premium Sedang Berjalan 24/7!');
+});
+
+app.listen(port, '0.0.0.0', () => {
+  console.log(`🌐 Web server aktif di port ${port}`);
+});
+
+// ==========================================
+// 🤖 SETUP BOT TELEGRAM
+// ==========================================
 const BOT_TOKEN = '8547583137:AAGosr3A9CQ_OOF_69KyWEH9tPvlM9k1UYk';
 const API_KEY = '6b6f54b36158a0247b1acc66aabf4b2d75104914298221f5a23a0ac673d97474';
 
 const bot = new Telegraf(BOT_TOKEN);
 
-// helper: sapaan dinamis berdasarkan waktu
 function getGreeting() {
   const hour = new Date().getHours();
   if (hour < 11) return 'Selamat Pagi 🌅';
@@ -16,7 +32,6 @@ function getGreeting() {
   return 'Selamat Malam 🌙';
 }
 
-// helper: visual progress bar premium
 function getProgressBar(status = '') {
   const s = status.toLowerCase();
   if (s.includes('delivered') || s.includes('sukses') || s.includes('berhasil')) return '▓▓▓▓▓▓▓▓▓▓ 100% (Selesai)';
@@ -28,13 +43,11 @@ function getProgressBar(status = '') {
   return '▓▓▓░░░░░░░ 30% (Berjalan)';
 }
 
-// helper: membersihkan karakter khusus dari API agar tidak bikin Telegram error
 function cleanData(text) {
   if (!text) return '';
   return String(text).replace(/[_*`\[\]]/g, ' ').trim();
 }
 
-// helper: format tanggal persis seperti gambar (DD-MM-YYYY HH:mm)
 function formatDate(str) {
   const d = new Date(str);
   if (isNaN(d)) return str;
@@ -46,7 +59,6 @@ function formatDate(str) {
   return `${day}-${month}-${year} ${hours}:${minutes}`;
 }
 
-// helper: pemetaan kode kurir ke nama lengkap ekspedisi
 function getCourierName(code) {
   const couriers = {
     'jne': 'JNE Express',
@@ -93,7 +105,6 @@ Silakan pilih menu di bawah ini jika butuh bantuan:`,
   );
 });
 
-// Action untuk tombol inline
 bot.action('btn_kurir', async (ctx) => {
   await ctx.answerCbQuery();
   ctx.reply(
@@ -137,30 +148,21 @@ bot.action('btn_about', async (ctx) => {
 
 bot.on('text', async (ctx) => {
   const textMsg = ctx.message.text.trim();
-  
-  // Abaikan jika command
   if (textMsg.startsWith('/')) return;
 
   const parts = textMsg.split(/\s+/);
-
   if (parts.length < 2) {
     return ctx.reply('❗ *Format salah*\n\nContoh yang benar: \`spx SPX123456789\` atau \`jnt JP123456789\`', { parse_mode: 'Markdown' });
   }
 
   const courier = parts[0].toLowerCase();
   const waybill = parts[1];
-  const number = parts[2]; // opsional untuk JNE
+  const number = parts[2];
 
   try {
-    // Tampilkan pesan loading agar interaktif
     const loadingMsg = await ctx.reply('⏳ _Sistem sedang memproses data resi kamu..._', { parse_mode: 'Markdown' });
 
-    const params = {
-      api_key: API_KEY,
-      courier,
-      awb: waybill
-    };
-
+    const params = { api_key: API_KEY, courier, awb: waybill };
     if (number) params.number = number;
 
     const res = await axios.get('https://api.binderbyte.com/v1/track', { params });
@@ -175,11 +177,9 @@ bot.on('text', async (ctx) => {
     const detail = data.detail || {}; 
     const history = data.history || [];
     
-    // --- PENARIKAN & PEMBERSIHAN DATA EKSTRA DETAIL ---
     const courierName = cleanData(getCourierName(summary.courier || courier));
     const awbClean = cleanData(summary.awb);
     
-    // SMART FILTER
     const isMarketplace = (courier === 'spx' || courier === 'lex');
     const hiddenText = isMarketplace ? 'Privasi Sistem (Disensor)' : 'Tidak tercatat di sistem';
     
@@ -193,7 +193,6 @@ bot.on('text', async (ctx) => {
     const statusText = cleanData(summary.status || 'Data sedang diproses');
     const amount = summary.amount || '';
 
-    // Logika penentuan COD
     let paymentStatus = 'NON-COD / Lunas';
     if (amount && amount !== '0' && amount.toLowerCase() !== 'false') {
       const formattedCod = Number(amount).toLocaleString('id-ID');
@@ -202,12 +201,9 @@ bot.on('text', async (ctx) => {
       paymentStatus = `Sistem Aplikasi (Bisa COD/Lunas)`;
     }
 
-    // Ambil tanggal update terakhir & Progress Bar
     const lastDate = history.length > 0 ? formatDate(history[0].date) : '-';
     const progressBar = getProgressBar(summary.status);
 
-    // ===== MEMBANGUN PESAN PREMIUM (TREE LAYOUT & PROGRESS BAR) =====
-    
     let msg = `📦 *EKSPEDISI ${courier.toUpperCase()}*\n`;
     msg += `└ ${courierName}\n\n`;
 
@@ -219,7 +215,7 @@ bot.on('text', async (ctx) => {
     msg += `📮 *Status Pengiriman*\n`;
     msg += `├ ${statusText}\n`;
     msg += `├ ${lastDate}\n`;
-    msg += `└ Progress: \`${progressBar}\`\n\n`; // <--- Progress Bar Disini
+    msg += `└ Progress: \`${progressBar}\`\n\n`; 
 
     msg += `📤 *Pengirim*\n`;
     msg += `├ Nama : ${shipper}\n`;
@@ -242,23 +238,18 @@ bot.on('text', async (ctx) => {
       });
     }
 
-    // Hapus pesan loading dan kirim hasil akhir dengan tombol "Hapus Pesan"
     await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id).catch(() => {});
     ctx.reply(msg, { 
       parse_mode: 'Markdown',
-      ...Markup.inlineKeyboard([
-        [Markup.button.callback('🗑️ Hapus Resi Ini', 'btn_delete_msg')]
-      ])
+      ...Markup.inlineKeyboard([[Markup.button.callback('🗑️ Hapus Resi Ini', 'btn_delete_msg')]])
     });
 
   } catch (err) {
     console.error('Error tracking:', err.response?.data || err.message);
-
     let errorDetails = '';
     if (err.response && err.response.data && err.response.data.message) {
       errorDetails = `\n💬 *Pesan Sistem:* _${cleanData(err.response.data.message)}_`;
     }
-
     ctx.reply(
 `❌ *Gagal melacak resi*
 
@@ -273,7 +264,6 @@ Silakan periksa kembali resinya 🙏`,
   }
 });
 
-// Action untuk menghapus pesan resi (biar chat ga menumpuk)
 bot.action('btn_delete_msg', async (ctx) => {
   try {
     await ctx.deleteMessage();
@@ -283,11 +273,10 @@ bot.action('btn_delete_msg', async (ctx) => {
   }
 });
 
-console.log('Menyiapkan bot...');
+console.log('Menyiapkan bot dan web server...');
 bot.launch().then(() => {
-  console.log('bot ready di gunakan kakak');
+  console.log('bot ready di gunakan kakak, menyala abangkuh 🔥');
 });
 
-// Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
