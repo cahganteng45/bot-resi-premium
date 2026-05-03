@@ -25,20 +25,26 @@ const API_KEY = '6b6f54b36158a0247b1acc66aabf4b2d75104914298221f5a23a0ac673d9747
 const bot = new Telegraf(BOT_TOKEN);
 
 // ==========================================
-// 👑 SISTEM KEAMANAN, KASTA USER & LIMIT
+// 👑 SISTEM KEAMANAN, KASTA USER, & NOTIFIKASI
 // ==========================================
-// USERNAME ADMIN SUDAH DIGANTI JADI BROWNMATCHA SESUAI REQUEST
-const ADMIN_USERNAME = 'brownmatcha'; 
+const ADMIN_USERNAME = 'brownmatcha'; // Username kamu sebagai Admin Utama
 
-// Database sementara
 const freeUsers = new Set(); // Kasta 1: Free (Limit 3x/hari)
 const vipUsers = new Set();  // Kasta 2: VIP (Unlimited Lifetime)
 const userLimits = {};       // Data limit harian kasta Free
 const MAX_LIMIT = 3;         // Batas maksimal cek untuk versi Free
 
-// Satpam Pengecek Akses
+// Database rahasia untuk nyimpan Chat ID agar bot bisa kirim notif ke user
+const userChatIds = {};      
+
+// Satpam Pengecek Akses & Pencatat Chat ID
 bot.use(async (ctx, next) => {
   const username = ctx.from?.username;
+
+  // Catat Chat ID secara diam-diam kalau dia punya username
+  if (username) {
+    userChatIds[username.toLowerCase()] = ctx.from.id;
+  }
 
   // 1. Cek apakah user punya username Telegram
   if (!username) {
@@ -57,7 +63,7 @@ bot.use(async (ctx, next) => {
   const textMsg = ctx.message?.text?.toLowerCase() || '';
 
   // Izinkan perintah admin agar admin bisa bekerja
-  if (textMsg.startsWith('/add') || textMsg.startsWith('/addvip') || textMsg.startsWith('/del') || textMsg.startsWith('/list')) {
+  if (textMsg.startsWith('/start') || textMsg.startsWith('/add') || textMsg.startsWith('/addvip') || textMsg.startsWith('/del') || textMsg.startsWith('/list')) {
     return next();
   }
 
@@ -66,7 +72,7 @@ bot.use(async (ctx, next) => {
     if (ctx.callbackQuery) {
       return ctx.answerCbQuery('⛔ Akses Ditolak! Anda belum terdaftar.', { show_alert: true });
     }
-    return ctx.reply('⛔ *AKSES DITOLAK*\n\nMaaf, bot ini bersifat eksklusif.\nSilakan hubungi Admin untuk mendaftar versi *Free (3x/hari)* atau beli akses *VIP Unlimited Lifetime*.', { parse_mode: 'Markdown' });
+    return ctx.reply('⛔ *AKSES DITOLAK*\n\nMaaf, bot ini bersifat eksklusif.\nSilakan hubungi Admin (@brownmatcha) untuk mendaftar versi *Free* atau beli akses *VIP Unlimited*.', { parse_mode: 'Markdown' });
   }
 
   // Lolos pemeriksaan, lanjut ke fungsi bot
@@ -90,35 +96,51 @@ function checkDailyLimit(username) {
 }
 
 // ------------------------------------------
-// FITUR KELOLA PELANGGAN KHUSUS ADMIN
+// FITUR KELOLA PELANGGAN & NOTIFIKASI
 // ------------------------------------------
 
-// Tambah User FREE (Limit 3x)
+// Tambah User FREE (Limit 3x) + Kirim Notif
 bot.command('add', (ctx) => {
   const username = ctx.from?.username?.toLowerCase() || '';
   if (username !== ADMIN_USERNAME.toLowerCase()) return; 
 
   const parts = ctx.message.text.split(' ');
-  if (parts.length < 2) return ctx.reply('❗ Format salah!\n\nKetik: `/add username`\nContoh: `/add budi123`', { parse_mode: 'Markdown' });
+  if (parts.length < 2) return ctx.reply('❗ Format salah!\n\nKetik: `/add username`', { parse_mode: 'Markdown' });
 
   const newUser = parts[1].replace('@', '').toLowerCase();
   freeUsers.add(newUser);
-  vipUsers.delete(newUser); // Hapus dari VIP jika sebelumnya VIP
+  vipUsers.delete(newUser); 
+  
   ctx.reply(`✅ *BERHASIL!*\nPengguna @${newUser} sekarang terdaftar di paket *FREE* (Limit ${MAX_LIMIT}x/hari).`, { parse_mode: 'Markdown' });
+
+  // Kirim notifikasi ke user (jika mereka sudah pernah klik start di bot)
+  if (userChatIds[newUser]) {
+    bot.telegram.sendMessage(userChatIds[newUser], `🎉 *SELAMAT!* 🎉\n\nAkun kamu (@${newUser}) telah diaktifkan oleh Admin ke paket *FREE*.\nKamu mendapatkan limit cek resi sebanyak *${MAX_LIMIT}x per hari*.\n\nSilakan nikmati layanan Bot Premium ini! 🚀`, { parse_mode: 'Markdown' }).catch(() => {});
+  } else {
+    ctx.reply(`⚠️ _Catatan: Notifikasi tidak terkirim karena @${newUser} belum pernah memulai (Start) bot ini sebelumnya._`, { parse_mode: 'Markdown' });
+  }
 });
 
-// Tambah User VIP (Unlimited)
+// Tambah User VIP (Unlimited) + Kirim Notif
 bot.command('addvip', (ctx) => {
   const username = ctx.from?.username?.toLowerCase() || '';
   if (username !== ADMIN_USERNAME.toLowerCase()) return; 
 
   const parts = ctx.message.text.split(' ');
-  if (parts.length < 2) return ctx.reply('❗ Format salah!\n\nKetik: `/addvip username`\nContoh: `/addvip sultan99`', { parse_mode: 'Markdown' });
+  if (parts.length < 2) return ctx.reply('❗ Format salah!\n\nKetik: `/addvip username`', { parse_mode: 'Markdown' });
 
   const newUser = parts[1].replace('@', '').toLowerCase();
   vipUsers.add(newUser);
-  freeUsers.delete(newUser); // Hapus dari Free jika sebelumnya Free
+  freeUsers.delete(newUser); 
+  
   ctx.reply(`💎 *BERHASIL!*\nPengguna @${newUser} sekarang resmi menjadi *VIP* (Akses Unlimited Lifetime).`, { parse_mode: 'Markdown' });
+
+  // Kirim notifikasi ke user VIP
+  if (userChatIds[newUser]) {
+    bot.telegram.sendMessage(userChatIds[newUser], `💎 *AKSES VIP DIBERIKAN!* 💎\n\nSelamat, akun kamu (@${newUser}) telah resmi di-Upgrade menjadi *VIP Member*!\n\nKini kamu bisa menikmati layanan cek resi *Unlimited (Tanpa Batas)* seumur hidup. Menyala abangkuh! 🔥🚀`, { parse_mode: 'Markdown' }).catch(() => {});
+  } else {
+    ctx.reply(`⚠️ _Catatan: Notifikasi tidak terkirim karena @${newUser} belum pernah memulai (Start) bot ini sebelumnya._`, { parse_mode: 'Markdown' });
+  }
 });
 
 // Hapus User dari semua paket
@@ -135,12 +157,14 @@ bot.command('del', (ctx) => {
 
   if (deletedFromFree || deletedFromVip) {
     ctx.reply(`🗑️ Akses untuk @${targetUser} telah dicabut dari sistem sepenuhnya.`, { parse_mode: 'Markdown' });
+    if (userChatIds[targetUser]) {
+      bot.telegram.sendMessage(userChatIds[targetUser], `🔒 *INFO SISTEM*\n\nMohon maaf, akses layanan Bot Premium kamu telah dicabut oleh Admin.`, { parse_mode: 'Markdown' }).catch(() => {});
+    }
   } else {
-    ctx.reply(`❌ Pengguna @${targetUser} tidak ditemukan di daftar pelanggan manapun.`);
+    ctx.reply(`❌ Pengguna @${targetUser} tidak ditemukan di daftar pelanggan.`);
   }
 });
 
-// Cek Daftar Pelanggan
 bot.command('list', (ctx) => {
   const username = ctx.from?.username?.toLowerCase() || '';
   if (username !== ADMIN_USERNAME.toLowerCase()) return;
@@ -362,6 +386,7 @@ bot.on('text', async (ctx) => {
     const weight = cleanData(summary.weight ? `${summary.weight}` : '-');
     const statusText = cleanData(summary.status || 'Data sedang diproses');
     
+    // Sedikit pencegah error internal dari API agar tidak crash
     const amountStr = String(summary.amount || '');
 
     let paymentStatus = 'NON-COD / Lunas';
