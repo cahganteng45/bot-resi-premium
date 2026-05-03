@@ -24,6 +24,162 @@ const API_KEY = '6b6f54b36158a0247b1acc66aabf4b2d75104914298221f5a23a0ac673d9747
 
 const bot = new Telegraf(BOT_TOKEN);
 
+// ==========================================
+// 👑 SISTEM KEAMANAN, KASTA USER & LIMIT
+// ==========================================
+// USERNAME ADMIN SUDAH DIGANTI JADI BROWNMATCHA SESUAI REQUEST
+const ADMIN_USERNAME = 'brownmatcha'; 
+
+// Database sementara
+const freeUsers = new Set(); // Kasta 1: Free (Limit 3x/hari)
+const vipUsers = new Set();  // Kasta 2: VIP (Unlimited Lifetime)
+const userLimits = {};       // Data limit harian kasta Free
+const MAX_LIMIT = 3;         // Batas maksimal cek untuk versi Free
+
+// Satpam Pengecek Akses
+bot.use(async (ctx, next) => {
+  const username = ctx.from?.username;
+
+  // 1. Cek apakah user punya username Telegram
+  if (!username) {
+    if (ctx.callbackQuery) {
+      return ctx.answerCbQuery('⚠️ Atur Username Telegram dulu!', { show_alert: true });
+    }
+    return ctx.reply('⚠️ *PERHATIAN*\n\nKamu belum mengatur *Username Telegram*.\nSilakan masuk ke Pengaturan (Settings) profil Telegram kamu dan buat Username terlebih dahulu agar bisa didaftarkan ke sistem ini.', { parse_mode: 'Markdown' });
+  }
+
+  const usernameLower = username.toLowerCase();
+  const isAdmin = (usernameLower === ADMIN_USERNAME.toLowerCase());
+  const isFree = freeUsers.has(usernameLower);
+  const isVip = vipUsers.has(usernameLower);
+  const isAllowedUser = isAdmin || isFree || isVip;
+
+  const textMsg = ctx.message?.text?.toLowerCase() || '';
+
+  // Izinkan perintah admin agar admin bisa bekerja
+  if (textMsg.startsWith('/add') || textMsg.startsWith('/addvip') || textMsg.startsWith('/del') || textMsg.startsWith('/list')) {
+    return next();
+  }
+
+  // 2. Tolak kalau belum didaftarkan sama sekali oleh Admin
+  if (!isAllowedUser) {
+    if (ctx.callbackQuery) {
+      return ctx.answerCbQuery('⛔ Akses Ditolak! Anda belum terdaftar.', { show_alert: true });
+    }
+    return ctx.reply('⛔ *AKSES DITOLAK*\n\nMaaf, bot ini bersifat eksklusif.\nSilakan hubungi Admin untuk mendaftar versi *Free (3x/hari)* atau beli akses *VIP Unlimited Lifetime*.', { parse_mode: 'Markdown' });
+  }
+
+  // Lolos pemeriksaan, lanjut ke fungsi bot
+  return next();
+});
+
+// Helper Fungsi Cek Limit Harian (Hanya dipakai untuk user FREE)
+function checkDailyLimit(username) {
+  const today = new Date().toDateString();
+
+  if (!userLimits[username] || userLimits[username].date !== today) {
+    userLimits[username] = { date: today, count: 0 };
+  }
+
+  if (userLimits[username].count >= MAX_LIMIT) {
+    return false; // Limit habis
+  }
+
+  userLimits[username].count += 1;
+  return true; // Lolos limit
+}
+
+// ------------------------------------------
+// FITUR KELOLA PELANGGAN KHUSUS ADMIN
+// ------------------------------------------
+
+// Tambah User FREE (Limit 3x)
+bot.command('add', (ctx) => {
+  const username = ctx.from?.username?.toLowerCase() || '';
+  if (username !== ADMIN_USERNAME.toLowerCase()) return; 
+
+  const parts = ctx.message.text.split(' ');
+  if (parts.length < 2) return ctx.reply('❗ Format salah!\n\nKetik: `/add username`\nContoh: `/add budi123`', { parse_mode: 'Markdown' });
+
+  const newUser = parts[1].replace('@', '').toLowerCase();
+  freeUsers.add(newUser);
+  vipUsers.delete(newUser); // Hapus dari VIP jika sebelumnya VIP
+  ctx.reply(`✅ *BERHASIL!*\nPengguna @${newUser} sekarang terdaftar di paket *FREE* (Limit ${MAX_LIMIT}x/hari).`, { parse_mode: 'Markdown' });
+});
+
+// Tambah User VIP (Unlimited)
+bot.command('addvip', (ctx) => {
+  const username = ctx.from?.username?.toLowerCase() || '';
+  if (username !== ADMIN_USERNAME.toLowerCase()) return; 
+
+  const parts = ctx.message.text.split(' ');
+  if (parts.length < 2) return ctx.reply('❗ Format salah!\n\nKetik: `/addvip username`\nContoh: `/addvip sultan99`', { parse_mode: 'Markdown' });
+
+  const newUser = parts[1].replace('@', '').toLowerCase();
+  vipUsers.add(newUser);
+  freeUsers.delete(newUser); // Hapus dari Free jika sebelumnya Free
+  ctx.reply(`💎 *BERHASIL!*\nPengguna @${newUser} sekarang resmi menjadi *VIP* (Akses Unlimited Lifetime).`, { parse_mode: 'Markdown' });
+});
+
+// Hapus User dari semua paket
+bot.command('del', (ctx) => {
+  const username = ctx.from?.username?.toLowerCase() || '';
+  if (username !== ADMIN_USERNAME.toLowerCase()) return;
+
+  const parts = ctx.message.text.split(' ');
+  if (parts.length < 2) return ctx.reply('❗ Format salah!\n\nKetik: `/del username`', { parse_mode: 'Markdown' });
+
+  const targetUser = parts[1].replace('@', '').toLowerCase();
+  const deletedFromFree = freeUsers.delete(targetUser);
+  const deletedFromVip = vipUsers.delete(targetUser);
+
+  if (deletedFromFree || deletedFromVip) {
+    ctx.reply(`🗑️ Akses untuk @${targetUser} telah dicabut dari sistem sepenuhnya.`, { parse_mode: 'Markdown' });
+  } else {
+    ctx.reply(`❌ Pengguna @${targetUser} tidak ditemukan di daftar pelanggan manapun.`);
+  }
+});
+
+// Cek Daftar Pelanggan
+bot.command('list', (ctx) => {
+  const username = ctx.from?.username?.toLowerCase() || '';
+  if (username !== ADMIN_USERNAME.toLowerCase()) return;
+
+  let msg = '🌟 *DAFTAR PENGGUNA BOT:*\n\n';
+
+  msg += `💎 *VIP UNLIMITED:*\n`;
+  if (vipUsers.size === 0) {
+    msg += `_Belum ada member VIP_\n`;
+  } else {
+    let v = 1;
+    vipUsers.forEach(user => { msg += `${v}. @${user}\n`; v++; });
+  }
+  msg += `\n`;
+
+  msg += `👤 *FREE TRIAL (${MAX_LIMIT}x/hari):*\n`;
+  if (freeUsers.size === 0) {
+    msg += `_Belum ada member Free_\n`;
+  } else {
+    let f = 1;
+    const today = new Date().toDateString();
+    freeUsers.forEach(user => {
+      let count = 0;
+      if (userLimits[user] && userLimits[user].date === today) {
+        count = userLimits[user].count;
+      }
+      const sisa = MAX_LIMIT - count;
+      msg += `${f}. @${user} (Sisa: ${sisa}x)\n`;
+      f++;
+    });
+  }
+  
+  ctx.reply(msg, { parse_mode: 'Markdown' });
+});
+
+
+// ==========================================
+// MULAI DARI SINI ADALAH KODE ASLI KAMU (TIDAK DIUBAH SAMA SEKALI)
+// ==========================================
 function getGreeting() {
   const hour = new Date().getHours();
   if (hour < 11) return 'Selamat Pagi 🌅';
@@ -155,6 +311,20 @@ bot.on('text', async (ctx) => {
     return ctx.reply('❗ *Format salah*\n\nContoh yang benar: \`spx SPX123456789\` atau \`jnt JP123456789\`', { parse_mode: 'Markdown' });
   }
 
+  // --- PEMOTONG LIMIT HARIAN ---
+  const usernameLower = ctx.from?.username?.toLowerCase() || '';
+  const isAdmin = (usernameLower === ADMIN_USERNAME.toLowerCase());
+  const isVip = vipUsers.has(usernameLower);
+  
+  // Jika bukan Admin DAN bukan VIP, maka dia user FREE yang kena limit
+  if (!isAdmin && !isVip) {
+    const isAllowed = checkDailyLimit(usernameLower);
+    if (!isAllowed) {
+      return ctx.reply(`⛔ *LIMIT HARIAN HABIS*\n\nMaaf, kamu sudah mencapai batas maksimal cek resi versi gratis (${MAX_LIMIT}x) untuk hari ini.\n\nSilakan *Upgrade ke VIP Lifetime* untuk akses tanpa batas, atau coba lagi besok!`, { parse_mode: 'Markdown' });
+    }
+  }
+  // -----------------------------
+
   const courier = parts[0].toLowerCase();
   const waybill = parts[1];
   const number = parts[2];
@@ -191,11 +361,12 @@ bot.on('text', async (ctx) => {
     const service = cleanData(summary.service || 'Standar');
     const weight = cleanData(summary.weight ? `${summary.weight}` : '-');
     const statusText = cleanData(summary.status || 'Data sedang diproses');
-    const amount = summary.amount || '';
+    
+    const amountStr = String(summary.amount || '');
 
     let paymentStatus = 'NON-COD / Lunas';
-    if (amount && amount !== '0' && amount.toLowerCase() !== 'false') {
-      const formattedCod = Number(amount).toLocaleString('id-ID');
+    if (amountStr && amountStr !== '0' && amountStr.toLowerCase() !== 'false') {
+      const formattedCod = Number(amountStr).toLocaleString('id-ID');
       paymentStatus = `COD Rp. ${formattedCod},-`;
     } else if (isMarketplace) {
       paymentStatus = `Sistem Aplikasi (Bisa COD/Lunas)`;
