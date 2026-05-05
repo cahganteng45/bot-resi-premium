@@ -375,19 +375,28 @@ bot.action('btn_delete_msg', async (ctx) => {
 
 console.log('Menyiapkan bot dan web server...');
 
-// 🔥 PERBAIKAN: Kasih jeda 5 detik biar server lama di Render mati dulu sebelum bot baru nyala 🔥
-setTimeout(() => {
-  bot.launch({ dropPendingUpdates: true }).then(() => {
+// 🔥 PERBAIKAN FINAL: Sistem Auto-Retry (Tabrak Terus sampai Error 409 Ilang) 🔥
+const startBot = async () => {
+  try {
+    await bot.launch({ dropPendingUpdates: true });
     console.log('bot ready di gunakan kakak, menyala abangkuh 🔥');
     
     bot.telegram.sendMessage(ADMIN_CHAT_ID, '✅ *bott ready nih min siap di gunakan gitu hehe*', { parse_mode: 'Markdown' })
       .catch((err) => {
-        console.log('⚠️ Gagal kirim notif ke admin. Pastikan ADMIN_CHAT_ID sudah benar dan kamu sudah pernah chat botnya.');
+        console.log('⚠️ Gagal kirim notif ke admin. Pastikan ADMIN_CHAT_ID sudah benar dan kamu sudah chat botnya.');
       });
-  }).catch((err) => {
-    console.error('⚠️ Gagal launch bot:', err);
-  });
-}, 5000); // 5000ms = 5 detik
+  } catch (error) {
+    console.error('⚠️ Error saat menyalakan bot:', error.message);
+    
+    // Kalau errornya 409 (Conflict), kita suruh dia ngulang lagi dalam 5 detik
+    if (error.response && error.response.error_code === 409) {
+      console.log('🔄 Telegram masih nahan koneksi lama. Coba tabrak lagi dalam 5 detik...');
+      setTimeout(startBot, 5000); 
+    }
+  }
+};
+
+startBot();
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
