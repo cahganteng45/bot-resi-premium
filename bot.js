@@ -9,7 +9,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 app.get('/', (req, res) => {
-  res.send('✅ Bot Lacak Resi Premium Sedang Berjalan 24/7!');
+  res.send('✅ Bot Lacak Resi (Edisi Gabut) Sedang Berjalan 24/7! 🚀');
 });
 
 app.listen(port, '0.0.0.0', () => {
@@ -22,40 +22,38 @@ app.listen(port, '0.0.0.0', () => {
 const BOT_TOKEN = '8547583137:AAGosr3A9CQ_OOF_69KyWEH9tPvlM9k1UYk';
 const API_KEY = '6b6f54b36158a0247b1acc66aabf4b2d75104914298221f5a23a0ac673d97474';
 
-const ADMIN_CHAT_ID = 6245183765; // Ganti jadi angka tanpa tanda kutip
+const ADMIN_CHAT_ID = 6245183765; 
 
 const bot = new Telegraf(BOT_TOKEN);
+
+// 🔥 TAMBAHAN: Database sementara untuk nyimpen memori klik tombol VIP
+const vipActivatedMessages = new Set();
 
 // ==========================================
 // 🛡️ SISTEM AKSES PRIVATE (HANYA OWNER & YANG DI-ADD)
 // ==========================================
-// Tambahkan username yang diizinkan di dalam array ini (tanpa @)
 const allowedUsers = ['brownmatcha']; 
 
 bot.use(async (ctx, next) => {
   const username = ctx.from?.username;
   
-  // Fitur agar Owner (@brownmatcha) bisa menambah akses user lain
-  // Ketik di bot: /add username_teman_kamu (tanpa @)
   if (ctx.message && ctx.message.text && ctx.message.text.startsWith('/add ') && username === 'brownmatcha') {
     const newUser = ctx.message.text.split(' ')[1].replace('@', '');
     if (!allowedUsers.includes(newUser)) {
       allowedUsers.push(newUser);
-      return ctx.reply(`✅ Pengguna @${newUser} berhasil diberikan akses ke bot!`);
+      return ctx.reply(`✅ Asik! @${newUser} udah dikasih jalur khusus buat pakai bot ini. 🎉`);
     } else {
-      return ctx.reply(`⚠️ Pengguna @${newUser} sudah ada di daftar akses.`);
+      return ctx.reply(`⚠️ Santai min, @${newUser} udah ada di dalam daftar kok. Aman!`);
     }
   }
 
-  // Pengecekan apakah user yang chat ada di dalam daftar akses
   if (allowedUsers.includes(username)) {
-    return next(); // Jika ada, biarkan lanjut memakai bot
+    return next(); 
   } else {
-    // Jika tidak ada akses, bot akan menolak
     if (ctx.message) {
-      return ctx.reply('⛔ *Akses Ditolak!*\n\nMaaf, bot ini bersifat *Private*. Hanya pemilik dan pengguna yang diizinkan yang dapat memakai bot ini.\n\nJika ingin menggunakan, silakan minta izin/add ke owner: @brownmatcha', { parse_mode: 'Markdown' });
+      return ctx.reply('🛑 *Eits, Akses Ditolak!*\n\nMaaf nih, kamu siapa ya? Kok tiba-tiba main pakai aja wkwk 🤭\nIni bot *Private*. Kalau mau ikutan pakai, wajib minta izin dulu ke owner: @brownmatcha', { parse_mode: 'Markdown' });
     } else if (ctx.callbackQuery) {
-      return ctx.answerCbQuery('⛔ Anda tidak memiliki akses ke bot ini.', { show_alert: true });
+      return ctx.answerCbQuery('⛔ Eits, mau ngapain pencet-pencet? wkwk Izin dulu ke owner ya! 😜', { show_alert: true });
     }
   }
 });
@@ -63,12 +61,20 @@ bot.use(async (ctx, next) => {
 // ==========================================
 // FUNGSI-FUNGSI PENDUKUNG
 // ==========================================
-function getGreeting() {
-  const hour = new Date().getHours();
-  if (hour < 11) return 'Selamat Pagi 🌅';
-  if (hour < 15) return 'Selamat Siang ☀️';
-  if (hour < 18) return 'Selamat Sore 🌇';
-  return 'Selamat Malam 🌙';
+function getGreeting(name = '') {
+  const options = { timeZone: 'Asia/Jakarta', hour: 'numeric', hour12: false };
+  const hour = parseInt(new Intl.DateTimeFormat('id-ID', options).format(new Date()));
+
+  if (hour >= 4 && hour < 11) {
+    return `Selamat Pagi kak *${name}* 🌅\nJangan lupa sarapan dan ngopi dulu ya biar fokus! ☕`;
+  }
+  if (hour >= 11 && hour < 15) {
+    return `Selamat Siang kak *${name}* ☀️\nJangan telat makan siang ya, semangat terus! 🍛`;
+  }
+  if (hour >= 15 && hour < 18) {
+    return `Selamat Sore kak *${name}* 🌇\nWaktunya santai sejenak sambil ngeteh atau ngopi sore nih! 🍵`;
+  }
+  return `Selamat Malam kak *${name}* 🌙\nJangan lupa istirahat yang cukup ya, selamat rebahan! 🛌`;
 }
 
 function getProgressBar(status = '') {
@@ -76,7 +82,7 @@ function getProgressBar(status = '') {
   if (s.includes('delivered') || s.includes('sukses') || s.includes('berhasil')) return '▓▓▓▓▓▓▓▓▓▓ 100% (Selesai)';
   if (s.includes('courier') || s.includes('kurir') || s.includes('delivery')) return '▓▓▓▓▓▓▓▓░░ 85% (Otw Alamat)';
   if (s.includes('transit') || s.includes('hub') || s.includes('gateway')) return '▓▓▓▓▓▓░░░░ 60% (Transit)';
-  if (s.includes('process') || s.includes('sorting')) return '▓▓▓▓░░░░░░ 55% (Diproses)';
+  if (s.includes('process') || s.includes('sorting')) return '▓▓▓▓░░░░░░ 75% (Diproses)';
   if (s.includes('pickup') || s.includes('jemput') || s.includes('received')) return '▓▓░░░░░░░░ 20% (Dijemput)';
   if (s.includes('failed') || s.includes('gagal') || s.includes('return')) return '░░░░░░░░░░ 0% (Gagal/Retur)';
   return '▓▓▓░░░░░░░ 30% (Berjalan)';
@@ -123,11 +129,12 @@ function getCourierName(code) {
 // COMMAND & CALLBACK HANDLING
 // ==========================================
 bot.start((ctx) => {
-  const userName = cleanData(ctx.from.first_name || 'Kak');
+  const userName = cleanData(ctx.from.first_name || 'Bosku');
+  
   ctx.reply(
-`${getGreeting()} *${userName}*! 👋
+`${getGreeting(userName)} 👋
 
-Selamat datang di *Bot Lacak Resi Premium*.
+Selamat datang di *Bot Lacak Resi Ala Kadarnya* 📦✨
 
 Kirim resi dengan format:
 📌 *kode_kurir nomor_resi*
@@ -185,14 +192,25 @@ Contoh: \`jne 123456789 12345\``,
 
 bot.action('btn_about', async (ctx) => {
   await ctx.answerCbQuery();
-  ctx.reply('👨‍💻 Bot ini dibuat dengan sistem Premium. Mendukung pelacakan resi real-time dengan UI Tree yang interaktif dan pendeteksi COD cerdas.');
+  ctx.reply('👨‍💻 Bot ini aslinya cuma dibikin karena lagi gabutan aja kak hehe ✌️');
 });
 
 // ==========================================
-// 🔔 FITUR NOTIFIKASI AUTO-UPDATE VIP
+// 🔔 FITUR NOTIFIKASI AUTO-UPDATE VIP (DENGAN ANTI-SPAM)
 // ==========================================
 bot.action('btn_vip_notif', async (ctx) => {
   try {
+    const msgId = ctx.callbackQuery.message.message_id;
+
+    // 🔥 Cek apakah tombol di resi ini sudah pernah diklik sebelumnya
+    if (vipActivatedMessages.has(msgId)) {
+      // show_alert: true bikin pop-up beneran muncul di tengah layar Telegram wkwk
+      return ctx.answerCbQuery('⚠️ Peringatan: Fitur VIP Auto-Update sudah aktif untuk resi ini! Tidak perlu diklik lagi wkwk.', { show_alert: true });
+    }
+
+    // Kalau belum pernah diklik, masukin ke memori (Set)
+    vipActivatedMessages.add(msgId);
+
     await ctx.answerCbQuery('Fitur Auto-Update VIP diaktifkan! 🔔');
     ctx.reply(
 `🔔 *Status VIP Aktif!*
@@ -214,7 +232,7 @@ bot.on('text', async (ctx) => {
 
   const parts = textMsg.split(/\s+/);
   if (parts.length < 2) {
-    return ctx.reply('❗ *Format salah*\n\nContoh yang benar: \`spx SPX123456789\` atau \`jnt JP123456789\`', { parse_mode: 'Markdown' });
+    return ctx.reply('❗ *Ups, format ketikannya kurang pas kak.*\n\nContoh yang bener gini ya:\n`spx SPX123456789` atau `jnt JP123456789`', { parse_mode: 'Markdown' });
   }
 
   const courier = parts[0].toLowerCase();
@@ -222,7 +240,7 @@ bot.on('text', async (ctx) => {
   const number = parts[2];
 
   try {
-    const loadingMsg = await ctx.reply('⏳ _Sistem sedang memproses data resi kamu..._', { parse_mode: 'Markdown' });
+    const loadingMsg = await ctx.reply('⏳ _Bentar ya kak, bot lagi lari ngecek resinya nih... 🏃💨_', { parse_mode: 'Markdown' });
 
     const params = { api_key: API_KEY, courier, awb: waybill };
     if (number) params.number = number;
@@ -267,37 +285,37 @@ bot.on('text', async (ctx) => {
     const lastDate = history.length > 0 ? formatDate(history[0].date) : '-';
     const progressBar = getProgressBar(summary.status);
 
-    let msg = `📦 *EKSPEDISI ${courier.toUpperCase()}*\n`;
-    msg += `└ ${courierName}\n\n`;
+    // 🔥🔥 ROMBAKAN TAMPILAN RESI BIAR MAKIN BAGUS & RAPI 🔥🔥
+    let msg = `✨ *L A P O R A N  R E S I* ✨\n`;
+    msg += `━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
-    msg += `📩 *Informasi Resi*\n`;
-    msg += `├ No Resi : ${awbClean}\n`;
-    msg += `├ Layanan : ${service} (Berat: ${weight})\n`;
-    msg += `└ Tipe    : ${paymentStatus}\n\n`;
+    msg += `🏢 *EKSPEDISI:* ${courierName} (${courier.toUpperCase()})\n`;
+    msg += `🔖 *NO. RESI:* \`${awbClean}\`\n`;
+    msg += `⚖️ *LAYANAN:* ${service} (Berat: ${weight})\n`;
+    msg += `💳 *TIPE:* ${paymentStatus}\n\n`;
 
-    msg += `📮 *Status Pengiriman*\n`;
-    msg += `├ ${statusText}\n`;
-    msg += `├ ${lastDate}\n`;
-    msg += `└ Progress: \`${progressBar}\`\n\n`; 
+    msg += `📍 *STATUS SAAT INI*\n`;
+    msg += `╰ 🚚 _${statusText}_\n`;
+    msg += `╰ ⏱️ ${lastDate}\n`;
+    msg += `📊 *Progress:* \`${progressBar}\`\n\n`;
 
-    msg += `📤 *Pengirim*\n`;
-    msg += `├ Nama : ${shipper}\n`;
-    msg += `└ Asal : ${origin}\n\n`;
+    msg += `👥 *DETAIL PENGIRIMAN*\n`;
+    msg += `╭ 📤 *PENGIRIM:* ${shipper} (${origin})\n`;
+    msg += `╰ 📥 *PENERIMA:* ${receiver} (${destination})\n\n`;
 
-    msg += `🚩 *Penerima*\n`;
-    msg += `├ Nama   : ${receiver}\n`;
-    msg += `└ Tujuan : ${destination}\n\n`;
-
-    msg += `⏩ *POD Detail*\n`;
+    msg += `📜 *RIWAYAT PERJALANAN (POD)*\n`;
+    msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
 
     if (history.length === 0) {
-      msg += '└ 📭 Belum ada riwayat pengiriman.\n';
+      msg += '📭 _Belum ada riwayat pengiriman._\n';
     } else {
       const fullHistory = [...history].reverse();
-      fullHistory.forEach((h) => {
+      fullHistory.forEach((h, index) => {
         const descClean = cleanData(h.desc);
-        msg += `✅ ${descClean}\n`;
-        msg += `└ ${formatDate(h.date)}\n`;
+        // Ikon lokasi buat status terbaru, ikon titik buat status lama
+        const icon = index === 0 ? '📍' : '🔹';
+        msg += `${icon} *${formatDate(h.date)}*\n`;
+        msg += `   ╰ _${descClean}_\n`;
       });
     }
 
@@ -313,19 +331,18 @@ bot.on('text', async (ctx) => {
 
   } catch (err) {
     console.error('Error tracking:', err.response?.data || err.message);
-    let errorDetails = '';
-    if (err.response && err.response.data && err.response.data.message) {
-      errorDetails = `\n💬 *Pesan Sistem:* _${cleanData(err.response.data.message)}_`;
-    }
+    await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id).catch(() => {}); // Pastikan pesan loading dihapus kalau error
+    
     ctx.reply(
-`❌ *Gagal melacak resi*
+`❌ *Ups, resi tidak ditemukan!*
 
-Kemungkinan penyebab:
-- Nomor resi salah / belum terdaftar di sistem
-- Kode kurir salah ketik
-- Limit API telah habis${errorDetails}
+Beberapa kemungkinan penyebabnya:
+• Nomor resi salah ketik.
+• Resi baru dibuat dan belum ter-update di sistem ekspedisi (tunggu beberapa jam).
+• Kode kurir tidak sesuai.
+• Sedang ada gangguan pada sistem pelacakan kami.
 
-Silakan periksa kembali resinya 🙏`,
+Yuk, pastikan lagi nomor resi dan kurirnya sudah benar, lalu coba beberapa saat lagi ya 🙏`,
       { parse_mode: 'Markdown' }
     );
   }
@@ -333,6 +350,10 @@ Silakan periksa kembali resinya 🙏`,
 
 bot.action('btn_delete_msg', async (ctx) => {
   try {
+    // Kalau pesannya dihapus, kita juga hapus memori tombol VIP-nya biar bersih
+    const msgId = ctx.callbackQuery.message.message_id;
+    vipActivatedMessages.delete(msgId);
+
     await ctx.deleteMessage();
     await ctx.answerCbQuery('Pesan resi dihapus 🗑️');
   } catch (error) {
@@ -342,11 +363,9 @@ bot.action('btn_delete_msg', async (ctx) => {
 
 console.log('Menyiapkan bot dan web server...');
 
-// 🔥 PERBAIKAN 409 CONFLICT: Pakai dropPendingUpdates biar server baru maksa ambil alih!
 bot.launch({ dropPendingUpdates: true }).then(() => {
   console.log('bot ready di gunakan kakak, menyala abangkuh 🔥');
   
-  // Auto notif ke admin
   bot.telegram.sendMessage(ADMIN_CHAT_ID, '✅ *bott ready nih min siap di gunakan gitu hehe*', { parse_mode: 'Markdown' })
     .catch((err) => {
       console.log('⚠️ Gagal kirim notif ke admin. Pastikan ADMIN_CHAT_ID sudah benar dan kamu sudah pernah chat botnya.');
