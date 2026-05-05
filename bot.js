@@ -315,12 +315,10 @@ bot.on('text', async (ctx) => {
     if (history.length === 0) {
       msg += '📭 _Belum ada riwayat pengiriman._\n';
     } else {
-      // Fix urutan & Ikon: Data terbaru di paling atas, pakai centang hijau semua, dan label posisi saat ini
       const fullHistory = history; 
       fullHistory.forEach((h, index) => {
         const descClean = cleanData(h.desc);
         
-        // Tambahkan label posisi saat ini khusus untuk index 0 (paling atas/terbaru)
         if (index === 0) {
           msg += `✅ *${formatDate(h.date)} [POSISI SAAT INI]*\n`;
         } else {
@@ -377,14 +375,19 @@ bot.action('btn_delete_msg', async (ctx) => {
 
 console.log('Menyiapkan bot dan web server...');
 
-bot.launch({ dropPendingUpdates: true }).then(() => {
-  console.log('bot ready di gunakan kakak, menyala abangkuh 🔥');
-  
-  bot.telegram.sendMessage(ADMIN_CHAT_ID, '✅ *bott ready nih min siap di gunakan gitu hehe*', { parse_mode: 'Markdown' })
-    .catch((err) => {
-      console.log('⚠️ Gagal kirim notif ke admin. Pastikan ADMIN_CHAT_ID sudah benar dan kamu sudah pernah chat botnya.');
-    });
-});
+// 🔥 PERBAIKAN: Kasih jeda 5 detik biar server lama di Render mati dulu sebelum bot baru nyala 🔥
+setTimeout(() => {
+  bot.launch({ dropPendingUpdates: true }).then(() => {
+    console.log('bot ready di gunakan kakak, menyala abangkuh 🔥');
+    
+    bot.telegram.sendMessage(ADMIN_CHAT_ID, '✅ *bott ready nih min siap di gunakan gitu hehe*', { parse_mode: 'Markdown' })
+      .catch((err) => {
+        console.log('⚠️ Gagal kirim notif ke admin. Pastikan ADMIN_CHAT_ID sudah benar dan kamu sudah pernah chat botnya.');
+      });
+  }).catch((err) => {
+    console.error('⚠️ Gagal launch bot:', err);
+  });
+}, 5000); // 5000ms = 5 detik
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
