@@ -22,6 +22,10 @@ app.listen(port, '0.0.0.0', () => {
 const BOT_TOKEN = '8547583137:AAGosr3A9CQ_OOF_69KyWEH9tPvlM9k1UYk';
 const API_KEY = '6b6f54b36158a0247b1acc66aabf4b2d75104914298221f5a23a0ac673d97474';
 
+// 🔥 TAMBAHAN: Isi dengan ID angka Telegram kamu (Chat ID)
+// Cara cek ID: Chat bot @userinfobot di Telegram, lalu copy ID angka kamu ke sini
+const ADMIN_CHAT_ID = '6245183765'; 
+
 const bot = new Telegraf(BOT_TOKEN);
 
 // ==========================================
@@ -252,7 +256,6 @@ bot.on('text', async (ctx) => {
     const weight = cleanData(summary.weight ? `${summary.weight}` : '-');
     const statusText = cleanData(summary.status || 'Data sedang diproses');
     
-    // 🔥 PERBAIKAN BUG COD: Paksa data amount jadi teks string biar kebal error
     const amountStr = String(summary.amount || '');
 
     let paymentStatus = 'NON-COD / Lunas';
@@ -302,7 +305,6 @@ bot.on('text', async (ctx) => {
 
     await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id).catch(() => {});
     
-    // 🔥 TAMBAH TOMBOL VIP NOTIF DI SINI
     ctx.reply(msg, { 
       parse_mode: 'Markdown',
       ...Markup.inlineKeyboard([
@@ -343,6 +345,13 @@ bot.action('btn_delete_msg', async (ctx) => {
 console.log('Menyiapkan bot dan web server...');
 bot.launch().then(() => {
   console.log('bot ready di gunakan kakak, menyala abangkuh 🔥');
+  
+  // 🔥 TAMBAHAN: Auto notif ke admin saat bot baru nyala / siap di deploy
+  // Pastikan variabel ADMIN_CHAT_ID di atas sudah diisi angka
+  bot.telegram.sendMessage(ADMIN_CHAT_ID, '✅ *bott ready nih min siap di gunakan gitu hehe*', { parse_mode: 'Markdown' })
+    .catch((err) => {
+      console.log('⚠️ Gagal kirim notif ke admin. Pastikan ADMIN_CHAT_ID sudah diisi angka ID Telegram kamu dan kamu sudah pernah chat/klik Start di botnya.');
+    });
 });
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
