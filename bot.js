@@ -157,19 +157,30 @@ Silakan pilih menu di bawah ini jika butuh bantuan:`,
   );
 });
 
-// 🔥 TAMBAHAN: Command /time untuk cek uptime bot
+// 🔥 PERBAIKAN: Command /time dengan format kalender yang rapi
 bot.command('time', (ctx) => {
   const uptimeMs = Date.now() - startTime;
   
+  // Hitung durasi
   let seconds = Math.floor((uptimeMs / 1000) % 60);
   let minutes = Math.floor((uptimeMs / (1000 * 60)) % 60);
   let hours = Math.floor((uptimeMs / (1000 * 60 * 60)) % 24);
   let days = Math.floor(uptimeMs / (1000 * 60 * 60 * 24));
   
+  // Format Tanggal Mulai (WIB)
+  const startD = new Date(startTime);
+  const optionsDate = { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+  const optionsTime = { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', hour12: false };
+  
+  const dateStr = new Intl.DateTimeFormat('id-ID', optionsDate).format(startD);
+  const timeStr = new Intl.DateTimeFormat('id-ID', optionsTime).format(startD).replace(':', '.');
+  
   let msg = `⏱️ *INFO WAKTU AKTIF BOT (UPTIME)*\n`;
   msg += `━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-  msg += `bot ini sudah menyala sejak:\n`;
-  msg += `👉 *${days} Hari, ${hours} Jam, ${minutes} Menit, ${seconds} Detik*\n\n`;
+  msg += `🚀 *Mulai Beroperasi Sejak:*\n`;
+  msg += `👉 ${dateStr}, jam ${timeStr} WIB ${minutes} Menit, ${seconds} Detik\n\n`;
+  msg += `⏳ *Durasi Menyala Non-Stop:*\n`;
+  msg += `👉 ${days} Hari, ${hours} Jam, ${minutes} Menit, ${seconds} Detik\n\n`;
   msg += `_Catatan: Waktu ini akan keriset dari 0 lagi setiap kali bot di-restart atau di-deploy ulang di server._`;
   
   ctx.reply(msg, { parse_mode: 'Markdown' });
@@ -267,7 +278,7 @@ bot.on('text', async (ctx) => {
   let loadingMsg;
 
   try {
-    loadingMsg = await ctx.reply('⏳ _bentar ya kak, bot lagi lari ngecek resinya nih... 🏃💨_', { parse_mode: 'Markdown' });
+    loadingMsg = await ctx.reply('⏳ _Bentar ya kak, bot lagi lari ngecek resinya nih... 🏃💨_', { parse_mode: 'Markdown' });
 
     const params = { api_key: API_KEY, courier, awb: waybill };
     if (number) params.number = number;
