@@ -21,7 +21,6 @@ app.listen(port, '0.0.0.0', () => {
 // ==========================================
 const BOT_TOKEN = '8547583137:AAGosr3A9CQ_OOF_69KyWEH9tPvlM9k1UYk';
 const API_KEY = '6b6f54b36158a0247b1acc66aabf4b2d75104914298221f5a23a0ac673d97474';
-
 const ADMIN_CHAT_ID = 6245183765; 
 
 const bot = new Telegraf(BOT_TOKEN);
@@ -32,12 +31,13 @@ const vipActivatedMessages = new Set();
 // ==========================================
 // 🛡️ SISTEM AKSES PRIVATE (HANYA OWNER & YANG DI-ADD)
 // ==========================================
-const allowedUsers = ['brownmatcha']; 
+const allowedUsers = ['brownmatcha', 'padilstore']; 
 
 bot.use(async (ctx, next) => {
   const username = ctx.from?.username;
   
-  if (ctx.message && ctx.message.text && ctx.message.text.startsWith('/add ') && username === 'brownmatcha') {
+  // Admin bisa ngasih akses ke orang lain pakai format: /add username
+  if (ctx.message && ctx.message.text && ctx.message.text.startsWith('/add ') && (username === 'brownmatcha' || username === 'padilstore')) {
     const newUser = ctx.message.text.split(' ')[1].replace('@', '');
     if (!allowedUsers.includes(newUser)) {
       allowedUsers.push(newUser);
@@ -59,7 +59,7 @@ bot.use(async (ctx, next) => {
 });
 
 // ==========================================
-// FUNGSI-FUNGSI PENDUKUNG
+// 🛠️ FUNGSI-FUNGSI PENDUKUNG
 // ==========================================
 function getGreeting(name = '') {
   const options = { timeZone: 'Asia/Jakarta', hour: 'numeric', hour12: false };
@@ -126,7 +126,7 @@ function getCourierName(code) {
 }
 
 // ==========================================
-// COMMAND & CALLBACK HANDLING
+// 📋 COMMAND & CALLBACK HANDLING
 // ==========================================
 bot.start((ctx) => {
   const userName = cleanData(ctx.from.first_name || 'Bosku');
@@ -196,19 +196,16 @@ bot.action('btn_about', async (ctx) => {
 });
 
 // ==========================================
-// 🔔 FITUR NOTIFIKASI AUTO-UPDATE VIP (DENGAN ANTI-SPAM)
+// 🔔 FITUR NOTIFIKASI AUTO-UPDATE VIP
 // ==========================================
 bot.action('btn_vip_notif', async (ctx) => {
   try {
     const msgId = ctx.callbackQuery.message.message_id;
 
-    // 🔥 Cek apakah tombol di resi ini sudah pernah diklik sebelumnya
     if (vipActivatedMessages.has(msgId)) {
-      // show_alert: true bikin pop-up beneran muncul di tengah layar Telegram wkwk
       return ctx.answerCbQuery('⚠️ Peringatan: Fitur VIP Auto-Update sudah aktif untuk resi ini! Tidak perlu diklik lagi wkwk.', { show_alert: true });
     }
 
-    // Kalau belum pernah diklik, masukin ke memori (Set)
     vipActivatedMessages.add(msgId);
 
     await ctx.answerCbQuery('Fitur Auto-Update VIP diaktifkan! 🔔');
@@ -224,7 +221,7 @@ Sistem sekarang akan memantau resi ini secara berkala. Jika ada pembaruan perger
 });
 
 // ==========================================
-// HANDLING PENCARIAN RESI (TEXT)
+// 🔎 HANDLING PENCARIAN RESI (TEXT)
 // ==========================================
 bot.on('text', async (ctx) => {
   const textMsg = ctx.message.text.trim();
@@ -239,8 +236,11 @@ bot.on('text', async (ctx) => {
   const waybill = parts[1];
   const number = parts[2];
 
+  // Deklarasi loadingMsg di sini biar aman kalau masuk catch (error handling)
+  let loadingMsg;
+
   try {
-    const loadingMsg = await ctx.reply('⏳ _Bentar ya kak, bot lagi lari ngecek resinya nih... 🏃💨_', { parse_mode: 'Markdown' });
+    loadingMsg = await ctx.reply('⏳ _Bentar ya kak, bot lagi lari ngecek resinya nih... 🏃💨_', { parse_mode: 'Markdown' });
 
     const params = { api_key: API_KEY, courier, awb: waybill };
     if (number) params.number = number;
@@ -248,7 +248,7 @@ bot.on('text', async (ctx) => {
     const res = await axios.get('https://api.binderbyte.com/v1/track', { params });
 
     if (!res.data || !res.data.data) {
-      await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id).catch(() => {});
+      if (loadingMsg) await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id).catch(() => {});
       return ctx.reply('❌ Respon API tidak valid atau data tidak ditemukan.');
     }
 
@@ -285,7 +285,7 @@ bot.on('text', async (ctx) => {
     const lastDate = history.length > 0 ? formatDate(history[0].date) : '-';
     const progressBar = getProgressBar(summary.status);
 
-    // 🔥🔥 ROMBAKAN TAMPILAN RESI BIAR MAKIN BAGUS & RAPI 🔥🔥
+    // 🔥 TAMPILAN RESI YANG SUDAH DIRAPIKAN 🔥
     let msg = `✨ *L A P O R A N  R E S I* ✨\n`;
     msg += `━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
@@ -309,17 +309,18 @@ bot.on('text', async (ctx) => {
     if (history.length === 0) {
       msg += '📭 _Belum ada riwayat pengiriman._\n';
     } else {
-      const fullHistory = [...history].reverse();
+      // Fix urutan: Data terbaru di paling atas, tidak di-reverse
+      const fullHistory = history; 
       fullHistory.forEach((h, index) => {
         const descClean = cleanData(h.desc);
-        // Ikon lokasi buat status terbaru, ikon titik buat status lama
+        // Ikon 📍 untuk status terbaru (paling atas), 🔹 untuk status sebelumnya
         const icon = index === 0 ? '📍' : '🔹';
         msg += `${icon} *${formatDate(h.date)}*\n`;
         msg += `   ╰ _${descClean}_\n`;
       });
     }
 
-    await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id).catch(() => {});
+    if (loadingMsg) await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id).catch(() => {});
     
     ctx.reply(msg, { 
       parse_mode: 'Markdown',
@@ -331,7 +332,11 @@ bot.on('text', async (ctx) => {
 
   } catch (err) {
     console.error('Error tracking:', err.response?.data || err.message);
-    await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id).catch(() => {}); // Pastikan pesan loading dihapus kalau error
+    
+    // Hapus pesan loading dengan aman kalau sistem error
+    if (loadingMsg) {
+      await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id).catch(() => {});
+    }
     
     ctx.reply(
 `❌ *Ups, resi tidak ditemukan!*
@@ -350,7 +355,6 @@ Yuk, pastikan lagi nomor resi dan kurirnya sudah benar, lalu coba beberapa saat 
 
 bot.action('btn_delete_msg', async (ctx) => {
   try {
-    // Kalau pesannya dihapus, kita juga hapus memori tombol VIP-nya biar bersih
     const msgId = ctx.callbackQuery.message.message_id;
     vipActivatedMessages.delete(msgId);
 
