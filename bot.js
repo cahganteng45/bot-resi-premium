@@ -288,42 +288,44 @@ bot.on('text', async (ctx) => {
       paymentStatus = `Sistem Aplikasi (Bisa COD/Lunas)`;
     }
 
+    const lastDate = history.length > 0 ? formatDate(history[0].date) : '-';
     const progressBar = getProgressBar(summary.status);
 
-    // 🔥 TAMPILAN RESI PREMIUM UI YANG LEBIH CLEAN 🔥
-    let msg = `📦 *INFORMASI RESI*\n`;
-    msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
-    msg += `🏢 *Ekspedisi:* ${courierName} (${courier.toUpperCase()})\n`;
-    msg += `🔖 *No. Resi:* \`${awbClean}\`\n`;
-    msg += `⚖️ *Layanan:* ${service} (${weight})\n`;
-    msg += `💳 *Tipe:* ${paymentStatus}\n\n`;
+    // 🔥 TAMPILAN RESI YANG SUDAH DIRAPIKAN 🔥
+    let msg = `✨ *L A P O R A N  R E S I* ✨\n`;
+    msg += `━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
-    msg += `🚚 *STATUS SAAT INI*\n`;
-    msg += `└ _${statusText}_\n`;
-    msg += `📊 \`${progressBar}\`\n\n`;
+    msg += `🏢 *EKSPEDISI:* ${courierName} (${courier.toUpperCase()})\n`;
+    msg += `🔖 *NO. RESI:* \`${awbClean}\`\n`;
+    msg += `⚖️ *LAYANAN:* ${service} (Berat: ${weight})\n`;
+    msg += `💳 *TIPE:* ${paymentStatus}\n\n`;
+
+    msg += `📍 *STATUS SAAT INI*\n`;
+    msg += `╰ 🚚 _${statusText}_\n`;
+    msg += `╰ ⏱️ ${lastDate}\n`;
+    msg += `📊 *Progress:* \`${progressBar}\`\n\n`;
 
     msg += `👥 *DETAIL PENGIRIMAN*\n`;
-    msg += `📤 *Dari:* ${shipper} (${origin})\n`;
-    msg += `📥 *Ke:* ${receiver} (${destination})\n\n`;
+    msg += `╭ 📤 *PENGIRIM:* ${shipper} (${origin})\n`;
+    msg += `╰ 📥 *PENERIMA:* ${receiver} (${destination})\n\n`;
 
-    msg += `🗺️ *RIWAYAT PERJALANAN (POD)*\n`;
-    msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `📜 *RIWAYAT PERJALANAN (POD)*\n`;
+    msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
 
     if (history.length === 0) {
       msg += '📭 _Belum ada riwayat pengiriman._\n';
     } else {
-      history.forEach((h, index) => {
+      const fullHistory = history; 
+      fullHistory.forEach((h, index) => {
         const descClean = cleanData(h.desc);
         
         if (index === 0) {
-          // Highlight update paling baru
-          msg += `🟢 *${formatDate(h.date)}* 📌 _[TERBARU]_\n`;
-          msg += ` └ 🚀 _${descClean}_\n\n`;
+          msg += `✅ *${formatDate(h.date)} [POSISI SAAT INI]*\n`;
         } else {
-          // Style clean untuk history lama
-          msg += `⚪ *${formatDate(h.date)}*\n`;
-          msg += ` └ _${descClean}_\n\n`;
+          msg += `✅ *${formatDate(h.date)}*\n`;
         }
+        
+        msg += `   ╰ _${descClean}_\n`;
       });
     }
 
@@ -386,6 +388,7 @@ const startBot = async () => {
   } catch (error) {
     console.error('⚠️ Error saat menyalakan bot:', error.message);
     
+    // Kalau errornya 409 (Conflict), kita suruh dia ngulang lagi dalam 5 detik
     if (error.response && error.response.error_code === 409) {
       console.log('🔄 Telegram masih nahan koneksi lama. Coba tabrak lagi dalam 5 detik...');
       setTimeout(startBot, 5000); 
