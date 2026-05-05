@@ -171,7 +171,14 @@ bot.action('btn_kurir', async (ctx) => {
 • \`lion\` - Lion Parcel
 • \`wahana\` - Wahana
 • \`jntcargo\` - J&T Cargo
-• \`sap\` - SAP Express`, 
+• \`sap\` - SAP Express
+
+💡 *Cara Cek Resinya:*
+Ketik kode kurir diikuti spasi dan nomor resi kamu, lalu kirim ke sini.
+
+*Contoh ketiknya gini:*
+\`jnt JP1234567890\`
+\`spx SPX0987654321\``, 
     { parse_mode: 'Markdown' }
   );
 });
@@ -236,7 +243,6 @@ bot.on('text', async (ctx) => {
   const waybill = parts[1];
   const number = parts[2];
 
-  // Deklarasi loadingMsg di sini biar aman kalau masuk catch (error handling)
   let loadingMsg;
 
   try {
@@ -309,13 +315,18 @@ bot.on('text', async (ctx) => {
     if (history.length === 0) {
       msg += '📭 _Belum ada riwayat pengiriman._\n';
     } else {
-      // Fix urutan: Data terbaru di paling atas, tidak di-reverse
+      // Fix urutan & Ikon: Data terbaru di paling atas, pakai centang hijau semua, dan label posisi saat ini
       const fullHistory = history; 
       fullHistory.forEach((h, index) => {
         const descClean = cleanData(h.desc);
-        // Ikon 📍 untuk status terbaru (paling atas), 🔹 untuk status sebelumnya
-        const icon = index === 0 ? '📍' : '🔹';
-        msg += `${icon} *${formatDate(h.date)}*\n`;
+        
+        // Tambahkan label posisi saat ini khusus untuk index 0 (paling atas/terbaru)
+        if (index === 0) {
+          msg += `✅ *${formatDate(h.date)} [POSISI SAAT INI]*\n`;
+        } else {
+          msg += `✅ *${formatDate(h.date)}*\n`;
+        }
+        
         msg += `   ╰ _${descClean}_\n`;
       });
     }
@@ -333,7 +344,6 @@ bot.on('text', async (ctx) => {
   } catch (err) {
     console.error('Error tracking:', err.response?.data || err.message);
     
-    // Hapus pesan loading dengan aman kalau sistem error
     if (loadingMsg) {
       await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id).catch(() => {});
     }
