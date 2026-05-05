@@ -22,9 +22,7 @@ app.listen(port, '0.0.0.0', () => {
 const BOT_TOKEN = '8547583137:AAGosr3A9CQ_OOF_69KyWEH9tPvlM9k1UYk';
 const API_KEY = '6b6f54b36158a0247b1acc66aabf4b2d75104914298221f5a23a0ac673d97474';
 
-// 🔥 TAMBAHAN: Isi dengan ID angka Telegram kamu (Chat ID)
-// Cara cek ID: Chat bot @userinfobot di Telegram, lalu copy ID angka kamu ke sini
-const ADMIN_CHAT_ID = '6245183765'; 
+const ADMIN_CHAT_ID = 6245183765; // Ganti jadi angka tanpa tanda kutip
 
 const bot = new Telegraf(BOT_TOKEN);
 
@@ -78,7 +76,7 @@ function getProgressBar(status = '') {
   if (s.includes('delivered') || s.includes('sukses') || s.includes('berhasil')) return '▓▓▓▓▓▓▓▓▓▓ 100% (Selesai)';
   if (s.includes('courier') || s.includes('kurir') || s.includes('delivery')) return '▓▓▓▓▓▓▓▓░░ 85% (Otw Alamat)';
   if (s.includes('transit') || s.includes('hub') || s.includes('gateway')) return '▓▓▓▓▓▓░░░░ 60% (Transit)';
-  if (s.includes('process') || s.includes('sorting')) return '▓▓▓▓░░░░░░ 40% (Diproses)';
+  if (s.includes('process') || s.includes('sorting')) return '▓▓▓▓░░░░░░ 55% (Diproses)';
   if (s.includes('pickup') || s.includes('jemput') || s.includes('received')) return '▓▓░░░░░░░░ 20% (Dijemput)';
   if (s.includes('failed') || s.includes('gagal') || s.includes('return')) return '░░░░░░░░░░ 0% (Gagal/Retur)';
   return '▓▓▓░░░░░░░ 30% (Berjalan)';
@@ -343,14 +341,15 @@ bot.action('btn_delete_msg', async (ctx) => {
 });
 
 console.log('Menyiapkan bot dan web server...');
-bot.launch().then(() => {
+
+// 🔥 PERBAIKAN 409 CONFLICT: Pakai dropPendingUpdates biar server baru maksa ambil alih!
+bot.launch({ dropPendingUpdates: true }).then(() => {
   console.log('bot ready di gunakan kakak, menyala abangkuh 🔥');
   
-  // 🔥 TAMBAHAN: Auto notif ke admin saat bot baru nyala / siap di deploy
-  // Pastikan variabel ADMIN_CHAT_ID di atas sudah diisi angka
+  // Auto notif ke admin
   bot.telegram.sendMessage(ADMIN_CHAT_ID, '✅ *bott ready nih min siap di gunakan gitu hehe*', { parse_mode: 'Markdown' })
     .catch((err) => {
-      console.log('⚠️ Gagal kirim notif ke admin. Pastikan ADMIN_CHAT_ID sudah diisi angka ID Telegram kamu dan kamu sudah pernah chat/klik Start di botnya.');
+      console.log('⚠️ Gagal kirim notif ke admin. Pastikan ADMIN_CHAT_ID sudah benar dan kamu sudah pernah chat botnya.');
     });
 });
 
