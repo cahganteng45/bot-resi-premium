@@ -39,52 +39,53 @@ const admins = ['brownmatcha', 'padilstore']; // Daftar admin yang bisa pakai /a
 
 bot.use(async (ctx, next) => {
   const username = ctx.from?.username;
+  const text = ctx.message?.text || '';
   
-  // Cek apakah ada pesan teks yang masuk
-  if (ctx.message && ctx.message.text) {
-    const text = ctx.message.text;
-
-    // ➕ FITUR /add username
-    if (text.startsWith('/add ') && admins.includes(username)) {
-      const newUser = text.split(' ')[1].replace('@', '');
-      if (!allowedUsers.includes(newUser)) {
-        allowedUsers.push(newUser);
-        return ctx.reply(`✅ Asik! @${newUser} udah dikasih jalur khusus buat pakai bot ini. 🎉`);
-      } else {
-        return ctx.reply(`⚠️ Santai min, @${newUser} udah ada di dalam daftar kok. Aman!`);
-      }
-    }
-
-    // ➖ FITUR /del username
-    if (text.startsWith('/del ') && admins.includes(username)) {
-      const targetUser = text.split(' ')[1].replace('@', '');
-      
-      // Proteksi biar admin nggak bisa dihapus
-      if (admins.includes(targetUser)) {
-         return ctx.reply(`⚠️ Buset min, masa mau ngehapus admin sendiri? Ditolak! 🛑`);
-      }
-
-      // Cari user di database sementara
-      const index = allowedUsers.indexOf(targetUser);
-      if (index > -1) {
-        allowedUsers.splice(index, 1); // Hapus user dari array
-        return ctx.reply(`🗑️ Beres! @${targetUser} udah ditendang dari daftar akses VIP. Bye-bye! 👋`);
-      } else {
-        return ctx.reply(`🤔 Lho, @${targetUser} emang nggak ada di dalam daftar, min.`);
-      }
-    }
+  // 1. IZINKAN SEMUA ORANG AKSES /START (Biar disapa dulu sama botnya)
+  if (text.startsWith('/start')) {
+    return next();
   }
 
-  // Pengecekan akses utama
-  if (allowedUsers.includes(username)) {
-    return next(); 
-  } else {
+  // 2. FILTER AKSES: Kalau bukan user VIP, langsung tolak pas mau ngecek resi atau pencet tombol
+  if (!allowedUsers.includes(username)) {
     if (ctx.message) {
-      return ctx.reply('🛑 *Eits, Akses Ditolak!*\n\nMaaf nih, kamu siapa ya? Kok tiba-tiba main pakai aja wkwk 🤭\nIni bot *Private*. Kalau mau ikutan pakai, wajib minta izin dulu ke owner: @padilstore', { parse_mode: 'Markdown' });
+      return ctx.reply('🛑 *Eits, Akses Ditolak!*\n\nMaaf nih kak, kamu siapa ya mau cek resi? Kok tiba-tiba main pakai aja wkwk 🤭\nIni bot *Private*. Kalau mau ikutan pakai, wajib minta izin dulu ke owner: @padilstore', { parse_mode: 'Markdown' });
     } else if (ctx.callbackQuery) {
-      return ctx.answerCbQuery('⛔ Eits, mau ngapain pencet-pencet? wkwk Izin dulu ke owner ya! 😜', { show_alert: true });
+      // Tolak kalau dia pencet tombol menu
+      return ctx.answerCbQuery('⛔ Eits, belum dapet izin ya? wkwk Hubungi owner dulu! 😜', { show_alert: true });
+    }
+    return;
+  }
+
+  // 3. FITUR KHUSUS ADMIN (Nambah & Hapus User)
+  if (text.startsWith('/add ') && admins.includes(username)) {
+    const newUser = text.split(' ')[1].replace('@', '');
+    if (!allowedUsers.includes(newUser)) {
+      allowedUsers.push(newUser);
+      return ctx.reply(`✅ Asik! @${newUser} udah dikasih jalur khusus buat pakai bot ini. 🎉`);
+    } else {
+      return ctx.reply(`⚠️ Santai min, @${newUser} udah ada di dalam daftar kok. Aman!`);
     }
   }
+
+  if (text.startsWith('/del ') && admins.includes(username)) {
+    const targetUser = text.split(' ')[1].replace('@', '');
+    
+    if (admins.includes(targetUser)) {
+       return ctx.reply(`⚠️ Buset min, masa mau ngehapus admin sendiri? Ditolak! 🛑`);
+    }
+
+    const index = allowedUsers.indexOf(targetUser);
+    if (index > -1) {
+      allowedUsers.splice(index, 1); 
+      return ctx.reply(`🗑️ Beres! @${targetUser} udah ditendang dari daftar akses VIP. Bye-bye! 👋`);
+    } else {
+      return ctx.reply(`🤔 Lho, @${targetUser} emang nggak ada di dalam daftar, min.`);
+    }
+  }
+
+  // 4. Lolos pengecekan, lanjut ke handler berikutnya
+  return next(); 
 });
 
 // ==========================================
@@ -209,6 +210,55 @@ bot.command('time', (ctx) => {
   ctx.reply(msg, { parse_mode: 'Markdown' });
 });
 
+// ==========================================
+// 🛑 FITUR BERHENTI / CANCEL AUTO-UPDATE VIP
+// ==========================================
+
+bot.command('listvip', (ctx) => {
+  const chatId = ctx.chat.id;
+  let list = [];
+  
+  for (const [awb, data] of activeTrackings.entries()) {
+    if (data.chatId === chatId) {
+      list.push(`📦 \`${awb}\` (${data.courier.toUpperCase()})`);
+    }
+  }
+
+  if (list.length === 0) {
+    return ctx.reply('📭 Kamu belum mengaktifkan Auto-Update VIP untuk resi manapun.');
+  }
+
+  let msg = `📋 *Daftar Resi VIP Kamu Saat Ini:*\n\n${list.join('\n')}\n\n`;
+  msg += `Ketik \`/stopvip nomor_resi\` untuk membatalkan pantauan.\n`;
+  msg += `Contoh: \`/stopvip JP1234567890\``;
+  
+  ctx.reply(msg, { parse_mode: 'Markdown' });
+});
+
+bot.command('stopvip', (ctx) => {
+  const textMsg = ctx.message.text.trim();
+  const parts = textMsg.split(/\s+/);
+
+  if (parts.length < 2) {
+    return ctx.reply('❗ *Format salah kak.*\n\nContoh yang bener:\n`/stopvip JP1234567890`', { parse_mode: 'Markdown' });
+  }
+
+  const awb = parts[1];
+
+  if (activeTrackings.has(awb)) {
+    const data = activeTrackings.get(awb);
+    
+    if (data.chatId === ctx.chat.id) {
+      activeTrackings.delete(awb); 
+      return ctx.reply(`✅ *Beres!* Pemantauan otomatis untuk resi \`${awb}\` berhasil dihentikan. Bot nggak akan ngirim notif lagi buat resi ini. 🛑`, { parse_mode: 'Markdown' });
+    } else {
+      return ctx.reply(`⚠️ Eits, kamu nggak bisa hapus resi ini karena bukan kamu yang ngaktifin VIP-nya!`, { parse_mode: 'Markdown' });
+    }
+  } else {
+    return ctx.reply(`🤔 Resi \`${awb}\` emang nggak ada di dalam daftar pantauan VIP kamu, kak. Coba cek lagi pakai /listvip`, { parse_mode: 'Markdown' });
+  }
+});
+
 bot.action('btn_kurir', async (ctx) => {
   await ctx.answerCbQuery();
   ctx.reply(
@@ -243,11 +293,15 @@ bot.action('btn_help', async (ctx) => {
   ctx.reply(
 `📖 *Panduan Penggunaan:*
 
-1. Ketik kode ekspedisi diikuti dengan nomor resi, lalu kirim.
+1. *Cek Resi:* Ketik kode ekspedisi diikuti spasi dan nomor resi.
 Contoh: \`jnt JP1234567890\`
+(Khusus JNE, tambah 5 digit nomor HP penerima di akhir jika data kurang lengkap. Contoh: \`jne 123456789 12345\`)
 
-2. *Catatan JNE:* Jika data kurang lengkap, tambahkan 5 digit terakhir nomor HP penerima di akhir. 
-Contoh: \`jne 123456789 12345\``, 
+2. *Auto-Update VIP:* Bot akan ngabarin otomatis tiap 15 menit kalau ada pergerakan paket. Klik tombol di bawah pesan resi untuk mengaktifkan.
+
+3. *Kelola VIP:*
+• \`/listvip\` - Melihat daftar resi VIP kamu yang masih aktif.
+• \`/stopvip nomor_resi\` - Membatalkan pantauan otomatis.`, 
     { parse_mode: 'Markdown' }
   );
 });
@@ -296,7 +350,7 @@ _(Mengecek otomatis setiap 15 Menit)_`,
 // ==========================================
 bot.on('text', async (ctx) => {
   const textMsg = ctx.message.text.trim();
-  // Bypass untuk command /add, /del, /time dll biar gak dicek sebagai resi
+  // Bypass untuk command biar gak dicek sebagai resi
   if (textMsg.startsWith('/')) return;
 
   const parts = textMsg.split(/\s+/);
@@ -395,7 +449,6 @@ bot.on('text', async (ctx) => {
     ctx.reply(msg, { 
       parse_mode: 'Markdown',
       ...Markup.inlineKeyboard([
-        // 🔥 TOMBOL VIP SEKARANG MENGIRIM DATA KURIR & RESI
         [Markup.button.callback('🔔 Aktifkan Auto-Update VIP', `vip_${courier}_${awbClean}`)],
         [Markup.button.callback('🗑️ Hapus Pesan Ini', 'btn_delete_msg')]
       ])
@@ -438,7 +491,7 @@ console.log('Menyiapkan bot dan web server...');
 // ⚙️ MESIN BACKGROUND: NGECEK RESI OTOMATIS TIAP 15 MENIT
 // ==========================================
 setInterval(async () => {
-  if (activeTrackings.size === 0) return; // Kalau nggak ada resi yg dilacak, diam aja
+  if (activeTrackings.size === 0) return; 
 
   console.log(`🔄 Mesin VIP jalan: Mengecek ${activeTrackings.size} resi...`);
 
@@ -469,7 +522,7 @@ setInterval(async () => {
         // Update jumlah riwayat terakhir di memori
         activeTrackings.set(awb, { ...data, lastHistoryCount: history.length });
 
-        // Kalau paket udah nyampe, hapus dari pantauan biar gak menuhin memori & limit API
+        // Kalau paket udah nyampe, hapus dari pantauan 
         if (statusText.toLowerCase().includes('delivered') || statusText.toLowerCase().includes('sukses')) {
           bot.telegram.sendMessage(data.chatId, `✅ *Yeay! Paket dengan resi \`${awb}\` sudah terkirim (Delivered).* Pemantauan otomatis dihentikan ya.`, { parse_mode: 'Markdown' }).catch(()=>{});
           activeTrackings.delete(awb);
@@ -479,7 +532,7 @@ setInterval(async () => {
       console.log(`⚠️ Gagal ngecek otomatis resi ${awb}:`, err.message);
     }
   }
-}, 15 * 60 * 1000); // 15 menit sekali
+}, 15 * 60 * 1000); 
 
 
 // ==========================================
@@ -497,7 +550,6 @@ const startBot = async () => {
   } catch (error) {
     console.error('⚠️ Error saat menyalakan bot:', error.message);
     
-    // Auto-Retry kalau error 409
     if (error.response && error.response.error_code === 409) {
       console.log('🔄 Telegram masih nahan koneksi lama. Coba tabrak lagi dalam 5 detik...');
       setTimeout(startBot, 5000); 
