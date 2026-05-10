@@ -156,7 +156,7 @@ function getCourierName(code) {
 }
 
 // ==========================================
-// 📋 COMMAND & CALLBACK HANDLING
+// 📋 COMMAND & HANDLING MENU
 // ==========================================
 bot.start((ctx) => {
   const userName = cleanData(ctx.from.first_name || 'Bosku');
@@ -176,10 +176,11 @@ Contoh:
 Silakan pilih menu di bawah ini jika butuh bantuan:`,
     { 
       parse_mode: 'Markdown',
-      ...Markup.inlineKeyboard([
-        [Markup.button.callback('🚚 Daftar Kurir', 'btn_kurir'), Markup.button.callback('📖 Cara Pakai', 'btn_help')],
-        [Markup.button.callback('👨‍💻 Tentang Bot', 'btn_about')]
-      ])
+      // 🔥 DI SINI UBAHANNYA: Pakai Reply Keyboard nempel di bawah
+      ...Markup.keyboard([
+        ['🚚 Daftar Kurir', '📖 Cara Pakai'],
+        ['👨‍💻 Tentang Bot']
+      ]).resize() // resize() biar ukurannya ngepas, nggak menuhin layar
     }
   );
 });
@@ -280,8 +281,8 @@ bot.command('stopvip', (ctx) => {
   }
 });
 
-bot.action('btn_kurir', async (ctx) => {
-  await ctx.answerCbQuery();
+// 🔥 DI SINI UBAHANNYA: Nangkep balasan dari Reply Keyboard pakai bot.hears
+bot.hears('🚚 Daftar Kurir', (ctx) => {
   ctx.reply(
 `🚚 *Daftar Kode Ekspedisi Populer:*
 • \`spx\` - Shopee Express
@@ -309,8 +310,7 @@ Ketik kode kurir diikuti spasi dan nomor resi kamu, lalu kirim ke sini.
   );
 });
 
-bot.action('btn_help', async (ctx) => {
-  await ctx.answerCbQuery();
+bot.hears('📖 Cara Pakai', (ctx) => {
   ctx.reply(
 `📖 *Panduan Penggunaan:*
 
@@ -327,8 +327,7 @@ Contoh: \`jnt JP1234567890\`
   );
 });
 
-bot.action('btn_about', async (ctx) => {
-  await ctx.answerCbQuery();
+bot.hears('👨‍💻 Tentang Bot', (ctx) => {
   ctx.reply('👨‍💻 Bot ini aslinya cuma dibikin karena lagi gabutan aja kak hehe ✌️');
 });
 
@@ -576,7 +575,7 @@ const startBot = async () => {
     await bot.launch({ dropPendingUpdates: true });
     console.log('Bot ready di gunakan kakak, menyala abangkuh 🔥');
     
-    bot.telegram.sendMessage(ADMIN_CHAT_ID, '✅ *Bot ready nih min siap digunakan hehe*', { parse_mode: 'Markdown' })
+    bot.telegram.sendMessage(ADMIN_CHAT_ID, '✅ *bott readyy siapp pakaii gasss*', { parse_mode: 'Markdown' })
       .catch((err) => {
         console.log('⚠️ Gagal kirim notif ke admin. Pastikan ADMIN_CHAT_ID sudah benar.');
       });
