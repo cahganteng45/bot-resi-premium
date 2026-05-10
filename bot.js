@@ -167,7 +167,7 @@ bot.start((ctx) => {
 Selamat datang di *Bot Lacak Resi Ala Kadarnya* 📦✨
 
 Kirim resi dengan format:
-📌 *kode kurir terus nomor resi*
+📌 *kode_kurir nomor_resi*
 
 Contoh:
 \`spx SPX123456789\`
@@ -182,6 +182,27 @@ Silakan pilih menu di bawah ini jika butuh bantuan:`,
       ])
     }
   );
+});
+
+bot.command('cmd', (ctx) => {
+  let msg = `📜 *DAFTAR PERINTAH (COMMAND) BOT*\n\n`;
+  
+  msg += `👤 *UMUM (Semua User):*\n`;
+  msg += `• /start - Mulai & sapaan bot\n`;
+  msg += `• /cmd - Lihat daftar perintah ini\n`;
+  msg += `• /time - Cek durasi bot menyala\n`;
+  msg += `• /listvip - Lihat resi Auto-Update kamu\n`;
+  msg += `• /stopvip \`<resi>\` - Batalin pantauan\n\n`;
+  
+  msg += `👑 *ADMIN ONLY:*\n`;
+  msg += `• /add \`<username>\` - Kasih izin ke user lain\n`;
+  msg += `• /del \`<username>\` - Hapus izin user\n\n`;
+  
+  msg += `📦 *CARA CEK RESI:*\n`;
+  msg += `Langsung ketik kodenya tanpa garis miring.\n`;
+  msg += `Contoh: \`jnt JP123456789\``;
+  
+  ctx.reply(msg, { parse_mode: 'Markdown' });
 });
 
 bot.command('time', (ctx) => {
@@ -321,7 +342,7 @@ bot.action(/^vip_(.+)_(.+)$/, async (ctx) => {
     const chatId = ctx.chat.id;
 
     if (activeTrackings.has(awb)) {
-      return ctx.answerCbQuery('⚠️ Fitur VIP sudah aktif gass teruss', { show_alert: true });
+      return ctx.answerCbQuery('⚠️ Fitur VIP sudah aktif untuk resi ini bang!', { show_alert: true });
     }
 
     // Simpan ke database sementara
@@ -346,12 +367,15 @@ _(Mengecek otomatis setiap 1 Jam, dan libur ngecek di jam 00:00 - 06:00)_`,
 });
 
 // ==========================================
-// 🔎 HANDLING PENCARIAN RESI (TEXT)
+// 🔎 HANDLING PENCARIAN RESI & AUTO-ROASTING TYPO COMMAND
 // ==========================================
 bot.on('text', async (ctx) => {
   const textMsg = ctx.message.text.trim();
-  // Bypass untuk command biar gak dicek sebagai resi
-  if (textMsg.startsWith('/')) return;
+  
+  // Kalau dia ngetik garis miring tapi commandnya nggak ada di list atas (berarti typo/ngawur)
+  if (textMsg.startsWith('/')) {
+    return ctx.reply('kamu ketik apasi gajelas banget typo kali lu ya 😒');
+  }
 
   const parts = textMsg.split(/\s+/);
   if (parts.length < 2) {
@@ -552,7 +576,7 @@ const startBot = async () => {
     await bot.launch({ dropPendingUpdates: true });
     console.log('Bot ready di gunakan kakak, menyala abangkuh 🔥');
     
-    bot.telegram.sendMessage(ADMIN_CHAT_ID, '✅ *bot ready nih min siap digunakan hehe*', { parse_mode: 'Markdown' })
+    bot.telegram.sendMessage(ADMIN_CHAT_ID, '✅ *Bot ready nih min siap digunakan hehe*', { parse_mode: 'Markdown' })
       .catch((err) => {
         console.log('⚠️ Gagal kirim notif ke admin. Pastikan ADMIN_CHAT_ID sudah benar.');
       });
