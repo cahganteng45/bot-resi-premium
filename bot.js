@@ -35,7 +35,7 @@ const activeTrackings = new Map();
 // 🛡️ SISTEM AKSES PRIVATE (HANYA OWNER & YANG DI-ADD)
 // ==========================================
 const allowedUsers = ['brownmatcha', 'padilstore']; 
-const admins = ['brownmatcha', 'padilstore']; // Daftar admin yang bisa pakai /add dan /del
+const admins = ['brownmatcha', 'padilstore']; // Daftar admin yang bisa pakai command penuh
 
 bot.use(async (ctx, next) => {
   const username = ctx.from?.username;
@@ -46,23 +46,29 @@ bot.use(async (ctx, next) => {
     return next();
   }
 
-  // 2. FILTER AKSES: Kalau bukan user VIP, langsung tolak pas mau ngecek resi atau pencet tombol
+  // 2. FILTER AKSES: Kalau bukan user yang di-add, tolak total
   if (!allowedUsers.includes(username)) {
     if (ctx.message) {
       return ctx.reply('🛑 *Eits, Akses Ditolak!*\n\nMaaf nih kak, kamu siapa ya mau cek resi? Kok tiba-tiba main pakai aja wkwk 🤭\nIni bot *Private*. Kalau mau ikutan pakai, wajib minta izin dulu ke owner: @padilstore', { parse_mode: 'Markdown' });
     } else if (ctx.callbackQuery) {
-      // Tolak kalau dia pencet tombol menu
       return ctx.answerCbQuery('⛔ Eits, belum dapet izin ya? wkwk Hubungi owner dulu! 😜', { show_alert: true });
     }
     return;
   }
 
-  // 3. FITUR KHUSUS ADMIN (Nambah & Hapus User)
+  // 3. FILTER COMMAND: Pastikan user VIP biasa GAK BISA pakai command apa-apa selain cek resi
+  if (text.startsWith('/') && text !== '/start') {
+    if (!admins.includes(username)) {
+      return ctx.reply('🛑 *Akses Ditolak!*\n\nMaaf kak, kamu cuma dikasih izin buat *Cek Resi* aja ya. Command ini khusus buat Admin! 📦', { parse_mode: 'Markdown' });
+    }
+  }
+
+  // 4. FITUR KHUSUS ADMIN (Nambah & Hapus User)
   if (text.startsWith('/add ') && admins.includes(username)) {
     const newUser = text.split(' ')[1].replace('@', '');
     if (!allowedUsers.includes(newUser)) {
       allowedUsers.push(newUser);
-      return ctx.reply(`✅ Asik! @${newUser} udah dikasih jalur khusus buat pakai bot ini. 🎉`);
+      return ctx.reply(`✅ Asik! @${newUser} udah dikasih jalur khusus buat ngecek resi di bot ini. 🎉`);
     } else {
       return ctx.reply(`⚠️ Santai min, @${newUser} udah ada di dalam daftar kok. Aman!`);
     }
@@ -84,7 +90,7 @@ bot.use(async (ctx, next) => {
     }
   }
 
-  // 4. Lolos pengecekan, lanjut ke handler berikutnya
+  // Lolos pengecekan, lanjut
   return next(); 
 });
 
@@ -176,32 +182,29 @@ Contoh:
 Silakan pilih menu di bawah ini jika butuh bantuan:`,
     { 
       parse_mode: 'Markdown',
-      // 🔥 DI SINI UBAHANNYA: Pakai Reply Keyboard nempel di bawah
       ...Markup.keyboard([
         ['🚚 Daftar Kurir', '📖 Cara Pakai'],
         ['👨‍💻 Tentang Bot']
-      ]).resize() // resize() biar ukurannya ngepas, nggak menuhin layar
+      ]).resize() 
     }
   );
 });
 
 bot.command('cmd', (ctx) => {
-  let msg = `📜 *DAFTAR PERINTAH (COMMAND) BOT*\n\n`;
+  let msg = `📜 *DAFTAR PERINTAH (KHUSUS ADMIN)*\n\n`;
   
-  msg += `👤 *UMUM (Semua User):*\n`;
-  msg += `• /start - Mulai & sapaan bot\n`;
-  msg += `• /cmd - Lihat daftar perintah ini\n`;
+  msg += `🛠️ *FITUR SISTEM:*\n`;
   msg += `• /time - Cek durasi bot menyala\n`;
-  msg += `• /listvip - Lihat resi Auto-Update kamu\n`;
-  msg += `• /stopvip \`<resi>\` - Batalin pantauan\n\n`;
+  msg += `• /listvip - Lihat resi Auto-Update aktif\n`;
+  msg += `• /stopvip \`<resi>\` - Batalin pantauan\n`;
+  msg += `• /cmd - Lihat daftar perintah ini\n\n`;
   
-  msg += `👑 *ADMIN ONLY:*\n`;
+  msg += `👑 *MANAJEMEN USER:*\n`;
   msg += `• /add \`<username>\` - Kasih izin ke user lain\n`;
   msg += `• /del \`<username>\` - Hapus izin user\n\n`;
-  
-  msg += `📦 *CARA CEK RESI:*\n`;
-  msg += `Langsung ketik kodenya tanpa garis miring.\n`;
-  msg += `Contoh: \`jnt JP123456789\``;
+
+  msg += `📦 *INFO USER BIASA:*\n`;
+  msg += `User yang di-add cuma bisa ngetik resi untuk di-track, nggak bisa pakai command pakai garis miring (/).`;
   
   ctx.reply(msg, { parse_mode: 'Markdown' });
 });
@@ -281,7 +284,9 @@ bot.command('stopvip', (ctx) => {
   }
 });
 
-// 🔥 DI SINI UBAHANNYA: Nangkep balasan dari Reply Keyboard pakai bot.hears
+// ==========================================
+// BALASAN REPLY KEYBOARD BISA DIAKSES SEMUA USER (YANG DI-ADD)
+// ==========================================
 bot.hears('🚚 Daftar Kurir', (ctx) => {
   ctx.reply(
 `🚚 *Daftar Kode Ekspedisi Populer:*
@@ -318,11 +323,7 @@ bot.hears('📖 Cara Pakai', (ctx) => {
 Contoh: \`jnt JP1234567890\`
 (Khusus JNE, tambah 5 digit nomor HP penerima di akhir jika data kurang lengkap. Contoh: \`jne 123456789 12345\`)
 
-2. *Auto-Update VIP:* Bot akan ngabarin otomatis tiap 1 jam kalau ada pergerakan paket. Klik tombol di bawah pesan resi untuk mengaktifkan.
-
-3. *Kelola VIP:*
-• \`/listvip\` - Melihat daftar resi VIP kamu yang masih aktif.
-• \`/stopvip nomor_resi\` - Membatalkan pantauan otomatis.`, 
+2. *Auto-Update VIP:* Bot akan ngabarin otomatis tiap 1 jam kalau ada pergerakan paket. Klik tombol di bawah pesan resi untuk mengaktifkan.`, 
     { parse_mode: 'Markdown' }
   );
 });
@@ -371,7 +372,8 @@ _(Mengecek otomatis setiap 1 Jam, dan libur ngecek di jam 00:00 - 06:00)_`,
 bot.on('text', async (ctx) => {
   const textMsg = ctx.message.text.trim();
   
-  // Kalau dia ngetik garis miring tapi commandnya nggak ada di list atas (berarti typo/ngawur)
+  // Kalau dia (Admin) ngetik garis miring tapi commandnya nggak ada di list atas (berarti typo/ngawur)
+  // Catatan: User biasa nggak bakal tembus ke baris ini kalau ngetik / karena udah diblokir di atas
   if (textMsg.startsWith('/')) {
     return ctx.reply('kamu ketik apasi gajelas banget typo kali lu ya 😒');
   }
@@ -575,7 +577,7 @@ const startBot = async () => {
     await bot.launch({ dropPendingUpdates: true });
     console.log('Bot ready di gunakan kakak, menyala abangkuh 🔥');
     
-    bot.telegram.sendMessage(ADMIN_CHAT_ID, '✅ *bott readyy siapp pakaii gasss*', { parse_mode: 'Markdown' })
+    bot.telegram.sendMessage(ADMIN_CHAT_ID, '✅ *Bot ready nih min siap digunakan hehe*', { parse_mode: 'Markdown' })
       .catch((err) => {
         console.log('⚠️ Gagal kirim notif ke admin. Pastikan ADMIN_CHAT_ID sudah benar.');
       });
