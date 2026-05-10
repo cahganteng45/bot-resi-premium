@@ -167,7 +167,7 @@ bot.start((ctx) => {
 Selamat datang di *Bot Lacak Resi Ala Kadarnya* 📦✨
 
 Kirim resi dengan format:
-📌 *kode_kurir nomor_resi*
+📌 *kode kurir terus nomor resi*
 
 Contoh:
 \`spx SPX123456789\`
@@ -297,7 +297,7 @@ bot.action('btn_help', async (ctx) => {
 Contoh: \`jnt JP1234567890\`
 (Khusus JNE, tambah 5 digit nomor HP penerima di akhir jika data kurang lengkap. Contoh: \`jne 123456789 12345\`)
 
-2. *Auto-Update VIP:* Bot akan ngabarin otomatis tiap 15 menit kalau ada pergerakan paket. Klik tombol di bawah pesan resi untuk mengaktifkan.
+2. *Auto-Update VIP:* Bot akan ngabarin otomatis tiap 1 jam kalau ada pergerakan paket. Klik tombol di bawah pesan resi untuk mengaktifkan.
 
 3. *Kelola VIP:*
 • \`/listvip\` - Melihat daftar resi VIP kamu yang masih aktif.
@@ -321,7 +321,7 @@ bot.action(/^vip_(.+)_(.+)$/, async (ctx) => {
     const chatId = ctx.chat.id;
 
     if (activeTrackings.has(awb)) {
-      return ctx.answerCbQuery('⚠️ Fitur VIP sudah aktif untuk resi ini bang!', { show_alert: true });
+      return ctx.answerCbQuery('⚠️ Fitur VIP sudah aktif gass teruss', { show_alert: true });
     }
 
     // Simpan ke database sementara
@@ -337,7 +337,7 @@ bot.action(/^vip_(.+)_(.+)$/, async (ctx) => {
 `🔔 *Status VIP Aktif Untuk Resi \`${awb}\`!*
 
 Sistem sekarang memantau resi ini secara otomatis. Jika kurir mengupdate perjalanan, bot akan langsung memberi tahu kamu di sini.
-_(Mengecek otomatis setiap 15 Menit)_`, 
+_(Mengecek otomatis setiap 1 Jam, dan libur ngecek di jam 00:00 - 06:00)_`, 
       { parse_mode: 'Markdown' }
     );
   } catch (error) {
@@ -488,10 +488,19 @@ bot.action('btn_delete_msg', async (ctx) => {
 console.log('Menyiapkan bot dan web server...');
 
 // ==========================================
-// ⚙️ MESIN BACKGROUND: NGECEK RESI OTOMATIS TIAP 15 MENIT
+// ⚙️ MESIN BACKGROUND: NGECEK RESI OTOMATIS (MODE IRIT & SMART)
 // ==========================================
 setInterval(async () => {
   if (activeTrackings.size === 0) return; 
+
+  // 🕒 FITUR JAM MALAM: Bot istirahat dari jam 00:00 sampai 05:59 WIB
+  const options = { timeZone: 'Asia/Jakarta', hour: 'numeric', hour12: false };
+  const currentHour = parseInt(new Intl.DateTimeFormat('id-ID', options).format(new Date()));
+  
+  if (currentHour >= 0 && currentHour < 6) {
+    console.log('😴 Jam malam (00:00 - 06:00), bot istirahat ngecek resi biar hemat API...');
+    return; // Berhenti di sini, jangan lakukan request ke API
+  }
 
   console.log(`🔄 Mesin VIP jalan: Mengecek ${activeTrackings.size} resi...`);
 
@@ -532,7 +541,7 @@ setInterval(async () => {
       console.log(`⚠️ Gagal ngecek otomatis resi ${awb}:`, err.message);
     }
   }
-}, 15 * 60 * 1000); 
+}, 60 * 60 * 1000); // 👈 Ini diset jadi 1 Jam (60 menit)
 
 
 // ==========================================
@@ -543,7 +552,7 @@ const startBot = async () => {
     await bot.launch({ dropPendingUpdates: true });
     console.log('Bot ready di gunakan kakak, menyala abangkuh 🔥');
     
-    bot.telegram.sendMessage(ADMIN_CHAT_ID, '✅ *Bot ready nih min siap digunakan hehe*', { parse_mode: 'Markdown' })
+    bot.telegram.sendMessage(ADMIN_CHAT_ID, '✅ *bot ready nih min siap digunakan hehe*', { parse_mode: 'Markdown' })
       .catch((err) => {
         console.log('⚠️ Gagal kirim notif ke admin. Pastikan ADMIN_CHAT_ID sudah benar.');
       });
